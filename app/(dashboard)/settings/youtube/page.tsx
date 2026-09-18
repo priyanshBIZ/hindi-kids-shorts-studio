@@ -131,9 +131,16 @@ export default function YouTubeSettingsPage() {
           </h4>
           <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-2">
             <p>1. Go to Google Cloud Console & create an OAuth 2.0 Client ID (Web Application).</p>
-            <p>2. Add Authorized Redirect URI: <code>http://localhost:3000/api/auth/callback/youtube</code></p>
+            <p>
+              2. Add Authorized Redirect URI:{" "}
+              <code className="text-amber-400 font-mono">
+                {typeof window !== "undefined"
+                  ? `${window.location.origin}/api/auth/callback/youtube`
+                  : "https://your-domain.vercel.app/api/auth/callback/youtube"}
+              </code>
+            </p>
             <p>3. Enable <strong>YouTube Data API v3</strong> in your Google Cloud Project.</p>
-            <p>4. Add your Client ID & Secret to your local <code>.env</code> file:</p>
+            <p>4. Add your Client ID & Secret to your environment variables:</p>
             <pre className="bg-slate-900 p-2.5 rounded text-[11px] text-slate-300 font-mono">
               YOUTUBE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com<br/>
               YOUTUBE_CLIENT_SECRET=your_google_client_secret
