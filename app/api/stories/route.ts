@@ -1,5 +1,6 @@
-﻿// Force dynamic: this route uses DB or external APIs
+// Force dynamic: this route uses DB or external APIs
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database/prisma";

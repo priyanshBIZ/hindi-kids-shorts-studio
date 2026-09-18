@@ -1,5 +1,8 @@
 {
   "functions": {
+    "app/api/stories/route.ts": {
+      "maxDuration": 60
+    },
     "app/api/upload/route.ts": {
       "maxDuration": 60
     },
