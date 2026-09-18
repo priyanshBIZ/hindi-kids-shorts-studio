@@ -54,24 +54,20 @@ export function ManualVideoCheckpoint({
     setSuccessMsg(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
+      // Client-side upload: goes directly from browser → Vercel Blob (no 4.5MB server limit)
+      const blob = await upload(`videos/${storyId}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload",
       });
 
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Upload failed");
+      const fileUrl = blob.url;
+      setUploadedFileUrl(fileUrl);
 
-      setUploadedFileUrl(data.data.fileUrl);
-
-      // Auto-save to story video record
+      // Save the Blob URL to the story video record
       const saveRes = await fetch(`/api/stories/${storyId}/video`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileUrl: data.data.fileUrl }),
+        body: JSON.stringify({ fileUrl }),
       });
 
       const saveData = await saveRes.json();
@@ -82,6 +78,7 @@ export function ManualVideoCheckpoint({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to upload video");
     } finally {
+
       setUploading(false);
     }
   };
