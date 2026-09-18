@@ -23,11 +23,22 @@ export class YouTubeOAuthProvider {
     return process.env.YOUTUBE_CLIENT_SECRET?.replace(/^["']|["']$/g, "").trim();
   }
 
-  private getRedirectUri(): string {
-    return (
-      process.env.YOUTUBE_REDIRECT_URI?.replace(/^["']|["']$/g, "").trim() ||
-      `${process.env.APP_URL || "http://localhost:3000"}/api/auth/callback/youtube`
-    );
+  public getRedirectUri(req?: any): string {
+    const envUri = process.env.YOUTUBE_REDIRECT_URI?.replace(/^["']|["']$/g, "").trim();
+    if (envUri && envUri.length > 0) {
+      return envUri;
+    }
+
+    if (req) {
+      const host = req.headers?.get?.("x-forwarded-host") || req.headers?.get?.("host");
+      const proto = req.headers?.get?.("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+      if (host) {
+        return `${proto}://${host}/api/auth/callback/youtube`;
+      }
+    }
+
+    const appUrl = process.env.APP_URL?.replace(/^["']|["']$/g, "").trim() || "http://localhost:3000";
+    return `${appUrl}/api/auth/callback/youtube`;
   }
 
   public isConfigured(): boolean {
@@ -36,18 +47,18 @@ export class YouTubeOAuthProvider {
     return Boolean(cid && cid.length > 0 && sec && sec.length > 0);
   }
 
-  private getOAuthClient() {
+  public getOAuthClient(req?: any) {
     return new google.auth.OAuth2(
       this.getClientId(),
       this.getClientSecret(),
-      this.getRedirectUri()
+      this.getRedirectUri(req)
     );
   }
 
-  public getAuthUrl(): string {
+  public getAuthUrl(req?: any): string {
     if (!this.isConfigured()) return "#";
 
-    const oauth2Client = this.getOAuthClient();
+    const oauth2Client = this.getOAuthClient(req);
     const scopes = [
       "https://www.googleapis.com/auth/youtube.upload",
       "https://www.googleapis.com/auth/youtube.readonly",

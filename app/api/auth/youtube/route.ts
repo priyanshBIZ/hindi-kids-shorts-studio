@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { youtubeOAuthProvider } from "@/lib/platforms/youtube";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   if (!youtubeOAuthProvider.isConfigured()) {
     return NextResponse.json(
       {
@@ -12,6 +12,6 @@ export async function GET() {
     );
   }
 
-  const authUrl = youtubeOAuthProvider.getAuthUrl();
+  const authUrl = youtubeOAuthProvider.getAuthUrl(req);
   return NextResponse.redirect(authUrl);
 }
