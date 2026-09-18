@@ -1,0 +1,7 @@
+[MASTER_STYLE]
+
+SCENE {{SCENE_NUMBER}}:
+{{VISUAL_DESCRIPTION}}
+
+[CHARACTER_CONSISTENCY]
+Vertical 9:16 aspect ratio, high resolution children's 3D animation, photorealistic lighting, cute character rendering.

@@ -1,0 +1,6 @@
+Hindi Narration Guidelines for Kids Shorts:
+- Keep sentences under 8 words each.
+- Use rhythmic, playful cadence (अरे वाह!, देखो तो सही!, कितना मज़ा आया!).
+- Emphasize emotional expressions (खुशी, आश्चर्य, प्यार, मदद).
+- Script must match exact visual timing (approx 2 words per second).
+- Standard Hindi pronunciation suitable for TTS or human voiceover.

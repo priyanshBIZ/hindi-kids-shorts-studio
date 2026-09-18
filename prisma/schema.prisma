@@ -1,0 +1,149 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String   @default("Hindi Kids Shorts")
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  stories     Story[]
+
+  @@map("projects")
+}
+
+model Story {
+  id              String         @id @default(cuid())
+  projectId       String?
+  project         Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  title           String
+  concept         String
+  language        String         @default("hi")
+  ageGroup        String         @default("4-8")
+  moral           String
+  storyText       String?
+  durationSeconds Int            @default(30)
+  status          String         @default("IDEA") // IDEA, STORY_GENERATED, PROMPTS_READY, VIDEO_PENDING, VIDEO_ADDED, READY_TO_PUBLISH, PUBLISHED, FAILED
+  scheduledFor    DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  scenes          Scene[]
+  videos          Video[]
+  metadata        Metadata?
+  publications    Publication[]
+
+  @@map("stories")
+}
+
+model Scene {
+  id                String   @id @default(cuid())
+  storyId           String
+  story             Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  sceneNumber       Int
+  duration          Int      @default(6)
+  visualDescription String
+  videoPrompt       String
+  narration         String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([storyId, sceneNumber])
+  @@map("scenes")
+}
+
+model Video {
+  id               String   @id @default(cuid())
+  storyId          String
+  story            Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  fileUrl          String?
+  youtubeUrl       String?
+  duration         Int?
+  aspectRatio      String   @default("9:16")
+  status           String   @default("PENDING") // PENDING, PROCESSING, READY, FAILED
+  flowCreditsUsed  Int?     @default(0)
+  provider         String   @default("MANUAL") // MANUAL, USEAPI
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("videos")
+}
+
+model Metadata {
+  id                 String   @id @default(cuid())
+  storyId            String   @unique
+  story              Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  youtubeTitle       String?
+  youtubeDescription String?
+  youtubeTags        String?
+  youtubeHashtags    String?
+  instagramCaption   String?
+  instagramHashtags  String?
+  facebookCaption    String?
+  facebookHashtags   String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("metadata")
+}
+
+model Publication {
+  id           String    @id @default(cuid())
+  storyId      String
+  story        Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  platform     String    // YOUTUBE, INSTAGRAM, FACEBOOK
+  status        String    @default("PENDING") // PENDING, PROCESSING, PUBLISHED, FAILED
+  platformUrl  String?
+  publishedAt  DateTime?
+  errorMessage String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("publications")
+}
+
+model OAuthAccount {
+  id            String    @id @default(cuid())
+  platform      String    // YOUTUBE, INSTAGRAM, FACEBOOK
+  accountId     String?
+  accountName   String?
+  accountAvatar String?
+  accessToken   String
+  refreshToken  String?
+  expiresAt     DateTime?
+  scope         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([platform])
+  @@map("oauth_accounts")
+}
+
+model ApiUsage {
+  id            String   @id @default(cuid())
+  service       String   // GEMINI, TTS, FLOW, YOUTUBE, META
+  model         String?
+  requestType   String   // STORY_GENERATION, PROMPT_GENERATION, METADATA_GENERATION, TTS, HEALTH_CHECK, YOUTUBE_PUBLISH, INSTAGRAM_PUBLISH
+  tokensUsed    Int?     @default(0)
+  estimatedCost Float?   @default(0.0)
+  success       Boolean  @default(true)
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+
+  @@map("api_usage")
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}

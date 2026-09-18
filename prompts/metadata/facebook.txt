@@ -1,0 +1,9 @@
+Generate family-friendly Facebook Reels copy and hashtags for a Hindi Kids animated video:
+Story Title: {{TITLE}}
+Concept: {{CONCEPT}}
+Moral: {{MORAL}}
+
+Guidelines:
+- Caption: Engaging family-oriented Hindi post explaining the moral value taught by the story.
+- Description: Clean context for parents and educators.
+- Hashtags: 5-10 clean tags (e.g. #HindiStories #KidsAnimation #FamilyValues #MoralStories #KidsLearning).

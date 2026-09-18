@@ -1,0 +1,10 @@
+Generate high-converting YouTube Shorts metadata for a Hindi Kids animated video:
+Story Title: {{TITLE}}
+Concept: {{CONCEPT}}
+Moral: {{MORAL}}
+
+Guidelines:
+- YouTube Title: Eye-catching Hindi title with joyful emojis and #Shorts tag (under 70 chars).
+- YouTube Description: Engaging 2-3 sentence Hindi story summary, moral lesson, call to like and subscribe, followed by search keywords.
+- YouTube Tags: 10-15 comma-separated high-traffic Hindi and English tags (e.g. Hindi Stories, Kahaniya, Kids Shorts, Moral Stories, Gajju Elephant).
+- YouTube Hashtags: #Shorts #HindiKahaniya #KidsStories #MoralStories #HindiShorts #BedtimeStories

@@ -1,0 +1,8 @@
+Generate high-engagement Instagram Reels caption and hashtags for a Hindi Kids animated video:
+Story Title: {{TITLE}}
+Concept: {{CONCEPT}}
+Moral: {{MORAL}}
+
+Guidelines:
+- Caption: Short, energetic caption in Hindi with friendly emojis, asking parents a sweet question to drive comments.
+- Hashtags: 15-20 viral hashtags (e.g. #reelsindia #hindikahaniya #kidsreels #parentingindia #indianmoms #moralstories #animation #cuteanimals).

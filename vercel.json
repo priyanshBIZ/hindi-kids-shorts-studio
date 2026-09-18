@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "app/api/upload/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/stories/[id]/publish/youtube/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/stories/[id]/publish/instagram/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}
