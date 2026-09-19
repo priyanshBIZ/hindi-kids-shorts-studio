@@ -1,22 +1,67 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextRequest, NextResponse } from "next/server";
+import { localStorageProvider } from "@/lib/storage/local";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Vercel Blob client-upload handler.
- * The browser uploads directly to Vercel Blob (no 4.5MB server limit).
- * This route only handles the token generation & completion callback.
+ * Upload Route
+ * Supports both Vercel Blob client upload (production)
+ * and direct FormData upload fallback (local dev or when Blob token is missing).
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const body = (await request.json()) as HandleUploadBody;
+  const contentType = request.headers.get("content-type") || "";
 
+  // CASE 1: Standard multipart/form-data upload (fallback / local dev)
+  if (contentType.includes("multipart/form-data")) {
+    try {
+      const formData = await request.formData();
+      const file = formData.get("file") as File | null;
+
+      if (!file) {
+        return NextResponse.json({ success: false, error: "No file provided" }, { status: 400 });
+      }
+
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      const fileUrl = await localStorageProvider.uploadFile(
+        buffer,
+        file.name,
+        file.type || "video/mp4"
+      );
+
+      return NextResponse.json({
+        success: true,
+        url: fileUrl,
+        data: { fileUrl, filename: file.name, size: file.size },
+      });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Local upload failed";
+      return NextResponse.json({ success: false, error: errorMsg }, { status: 500 });
+    }
+  }
+
+  // CASE 2: Vercel Blob client-upload token generation
   try {
+    const body = (await request.json()) as HandleUploadBody;
+
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!token) {
+      return NextResponse.json(
+        {
+          error:
+            "BLOB_READ_WRITE_TOKEN environment variable is missing on Vercel. Please add BLOB_READ_WRITE_TOKEN in Vercel Settings -> Environment Variables.",
+        },
+        { status: 400 }
+      );
+    }
+
     const jsonResponse = await handleUpload({
       body,
       request,
+      token,
       onBeforeGenerateToken: async (pathname) => {
-        // Validate file type - only allow videos
         const lower = pathname.toLowerCase();
         const isVideo =
           lower.endsWith(".mp4") ||
@@ -35,7 +80,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         };
       },
       onUploadCompleted: async ({ blob }) => {
-        // Called by Vercel after upload is done
         console.log("[Blob Upload] Completed:", blob.url);
       },
     });
