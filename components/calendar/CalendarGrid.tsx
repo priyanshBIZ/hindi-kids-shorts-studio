@@ -63,6 +63,17 @@ export function CalendarGrid({ stories }: { stories: CalendarStory[] }) {
     }
   };
 
+  // Pre-filled 7-day suggestions by day-of-week (0 = Sun, 1 = Mon, ..., 6 = Sat)
+  const daySuggestions: { [dow: number]: string } = {
+    6: "गज्जू और नन्ही चिड़िया",
+    0: "चीकू और जादुई अखरोट",
+    1: "मीनू चिड़िया का घोंसला",
+    2: "टॉमी कुत्ता और खोया बच्चा",
+    3: "सोनू खरगोश की दौड़",
+    4: "रैम्बो मोर का नाच",
+    5: "मिठू तोता और मीठा आम",
+  };
+
   return (
     <Card className="space-y-4">
       <CardHeader>
@@ -99,12 +110,14 @@ export function CalendarGrid({ stories }: { stories: CalendarStory[] }) {
       <div className="grid grid-cols-7 gap-2">
         {/* Empty cells before month start */}
         {Array.from({ length: firstDayIndex }).map((_, i) => (
-          <div key={`empty-${i}`} className="min-h-[90px] rounded-lg bg-slate-950/20 border border-slate-900/50 p-1.5 opacity-30" />
+          <div key={`empty-${i}`} className="min-h-[95px] rounded-lg bg-slate-950/20 border border-slate-900/50 p-1.5 opacity-30" />
         ))}
 
         {/* Days */}
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
+          const cellDate = new Date(year, month, day);
+          const dow = cellDate.getDay();
           const dayStories = storiesByDay[day] || [];
           const isToday =
             new Date().getDate() === day &&
@@ -125,25 +138,34 @@ export function CalendarGrid({ stories }: { stories: CalendarStory[] }) {
                   {day}
                 </span>
                 {isToday && (
-                  <span className="text-[10px] bg-orange-500/20 text-orange-300 px-1 rounded">
+                  <span className="text-[10px] bg-orange-500/20 text-orange-300 px-1 rounded font-semibold">
                     Today
                   </span>
                 )}
               </div>
 
               <div className="space-y-1 mt-1 flex-1 overflow-y-auto max-h-[65px]">
-                {dayStories.map((s) => (
-                  <Link
-                    key={s.id}
-                    href={`/content/${s.id}`}
-                    className={`block text-[11px] p-1 rounded border leading-tight truncate transition-transform hover:scale-[1.02] ${getStatusColor(
-                      s.status
-                    )}`}
-                    title={s.title}
+                {dayStories.length > 0 ? (
+                  dayStories.map((s) => (
+                    <Link
+                      key={s.id}
+                      href={`/content/${s.id}`}
+                      className={`block text-[11px] p-1 rounded border leading-tight truncate transition-transform hover:scale-[1.02] ${getStatusColor(
+                        s.status
+                      )}`}
+                      title={s.title}
+                    >
+                      {s.title}
+                    </Link>
+                  ))
+                ) : (
+                  <div
+                    className="text-[10px] p-1 rounded border border-dashed border-slate-800 text-slate-500 bg-slate-950/40 leading-tight truncate"
+                    title={`Suggested topic for ${monthNames[month]} ${day}: ${daySuggestions[dow]}`}
                   >
-                    {s.title}
-                  </Link>
-                ))}
+                    💡 {daySuggestions[dow]}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -163,6 +185,9 @@ export function CalendarGrid({ stories }: { stories: CalendarStory[] }) {
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-full bg-sky-400" /> Story / Prompts Ready
+        </span>
+        <span className="flex items-center gap-1.5 text-slate-500">
+          <span className="h-2.5 w-2.5 rounded-full border border-dashed border-slate-500" /> 💡 Curriculum Idea (Pending Upload)
         </span>
       </div>
     </Card>

@@ -33,10 +33,8 @@ export function ManualVideoCheckpoint({
   } | null;
   onVideoSaved: () => void;
 }) {
-  const [youtubeUrl, setYoutubeUrl] = useState(existingVideo?.youtubeUrl || "");
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(existingVideo?.fileUrl || null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -79,7 +77,6 @@ export function ManualVideoCheckpoint({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to upload video");
     } finally {
-
       setUploading(false);
     }
   };
@@ -115,40 +112,7 @@ export function ManualVideoCheckpoint({
     }
   };
 
-  const handleSaveYoutubeUrl = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!youtubeUrl.trim()) {
-      setError("Please enter a valid YouTube Short URL.");
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-    setSuccessMsg(null);
-
-    try {
-      const res = await fetch(`/api/stories/${storyId}/video`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          youtubeUrl: youtubeUrl.trim(),
-          fileUrl: uploadedFileUrl || undefined,
-        }),
-      });
-
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Failed to save video URL");
-
-      setSuccessMsg("YouTube Short URL recorded! Story is ready for social metadata.");
-      onVideoSaved();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save YouTube URL");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const hasVideoAttached = Boolean(existingVideo?.status === "READY" || uploadedFileUrl || youtubeUrl);
+  const hasVideoAttached = Boolean(existingVideo?.status === "READY" || uploadedFileUrl);
 
   return (
     <Card className="border-amber-500/30 bg-slate-900/90 space-y-6">
@@ -162,7 +126,7 @@ export function ManualVideoCheckpoint({
               Google Flow Video Checkpoint
             </span>
             <CardTitle className="text-lg text-slate-100">
-              Video & Storage Management
+              Video Upload & Storage Management
             </CardTitle>
           </div>
         </div>
@@ -170,7 +134,7 @@ export function ManualVideoCheckpoint({
         {hasVideoAttached ? (
           <Badge variant="success" className="gap-1.5 py-1 px-3">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            <span>Video Received</span>
+            <span>MP4 Video Ready</span>
           </Badge>
         ) : (
           <Badge variant="warning" className="gap-1.5 py-1 px-3">
@@ -184,7 +148,7 @@ export function ManualVideoCheckpoint({
         <div className="bg-slate-950/60 p-3.5 rounded-lg border border-slate-800 space-y-1">
           <span className="text-amber-400 font-bold uppercase tracking-wide">Step 1</span>
           <p className="text-slate-200 font-medium">Copy Scene Prompts</p>
-          <p className="text-slate-400 text-[11px]">Copy individual or bundled prompts from below.</p>
+          <p className="text-slate-400 text-[11px]">Copy individual or bundled prompts from tab 1.</p>
         </div>
 
         <div className="bg-slate-950/60 p-3.5 rounded-lg border border-slate-800 space-y-1">
@@ -196,13 +160,13 @@ export function ManualVideoCheckpoint({
         <div className="bg-slate-950/60 p-3.5 rounded-lg border border-slate-800 space-y-1">
           <span className="text-amber-400 font-bold uppercase tracking-wide">Step 3</span>
           <p className="text-slate-200 font-medium">Combine in Scenebuilder</p>
-          <p className="text-slate-400 text-[11px]">Drag all 5 clips into Flow timeline, export as 9:16 MP4.</p>
+          <p className="text-slate-400 text-[11px]">Drag clips into Flow timeline, export as 9:16 MP4.</p>
         </div>
 
         <div className="bg-slate-950/60 p-3.5 rounded-lg border border-slate-800 space-y-1">
           <span className="text-amber-400 font-bold uppercase tracking-wide">Step 4</span>
-          <p className="text-slate-200 font-medium">Upload or Paste URL</p>
-          <p className="text-slate-400 text-[11px]">Save below to advance pipeline to metadata.</p>
+          <p className="text-slate-200 font-medium">Upload Fresh MP4</p>
+          <p className="text-slate-400 text-[11px]">Upload below for 1-click & 10 AM auto-publishing.</p>
         </div>
       </div>
 
@@ -221,73 +185,39 @@ export function ManualVideoCheckpoint({
         </div>
       )}
 
-      {/* Checkpoint Input Forms */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-slate-800/80">
-        {/* Option A: Paste YouTube Short URL */}
-        <form onSubmit={handleSaveYoutubeUrl} className="space-y-3 bg-slate-950/40 p-4 rounded-xl border border-slate-800">
-          <div className="flex items-center gap-2 text-xs font-semibold text-red-400">
-            <Youtube className="h-4 w-4" />
-            <span>Option A: YouTube Short URL</span>
-          </div>
-          <p className="text-[11px] text-slate-400">
-            Paste the URL of your uploaded Short (e.g. <code>https://youtube.com/shorts/...</code>)
-          </p>
-
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={youtubeUrl}
-              onChange={(e) => setYoutubeUrl(e.target.value)}
-              placeholder="https://youtube.com/shorts/..."
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
-            />
-            <Button
-              type="submit"
-              size="sm"
-              isLoading={saving}
-              variant="primary"
-              className="text-xs px-4"
-            >
-              Save URL
-            </Button>
-          </div>
-
-          {existingVideo?.youtubeUrl && (
-            <a
-              href={existingVideo.youtubeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] text-sky-400 hover:underline pt-1"
-            >
-              <span>View attached YouTube Short</span>
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          )}
-        </form>
-
-        {/* Option B: Upload MP4 Video File */}
-        <div className="space-y-3 bg-slate-950/40 p-4 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <div>
+      {/* MP4 File Upload Area */}
+      <div className="pt-2 border-t border-slate-800/80">
+        <div className="space-y-3 bg-slate-950/40 p-5 rounded-xl border border-slate-800">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-sky-400">
               <UploadCloud className="h-4 w-4" />
-              <span>Option B: Upload MP4 Video</span>
+              <span>Upload Fresh 9:16 MP4 Short Video</span>
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Store the actual 9:16 MP4 video directly in the studio storage.
-            </p>
+            <span className="text-[11px] text-slate-500">Auto-publishes daily at 10:00 AM & auto-purges Blob storage</span>
           </div>
 
           {uploadedFileUrl ? (
             /* Uploaded — show file info + delete button */
-            <div className="space-y-2">
-              <p className="text-[11px] text-emerald-400 flex items-center gap-1 font-mono truncate">
-                <CheckCircle2 className="h-3 w-3 shrink-0" />
-                <span className="truncate">Uploaded: {uploadedFileUrl.split("/").pop()}</span>
-              </p>
+            <div className="space-y-3 p-4 bg-slate-900/80 rounded-lg border border-slate-800">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-emerald-400 flex items-center gap-1.5 font-mono truncate">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                  <span className="truncate">Attached MP4: {uploadedFileUrl.split("/").pop()}</span>
+                </p>
+                <a
+                  href={uploadedFileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-sky-400 hover:underline flex items-center gap-1"
+                >
+                  <span>Preview Video</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 {/* Re-upload button */}
-                <label className="flex-1 border border-dashed border-slate-700 hover:border-slate-500 rounded-lg p-2 text-center cursor-pointer transition-colors bg-slate-900/50">
+                <label className="flex-1 border border-dashed border-slate-700 hover:border-amber-500/60 rounded-lg p-2.5 text-center cursor-pointer transition-colors bg-slate-950">
                   <input
                     type="file"
                     accept="video/mp4,video/*"
@@ -295,9 +225,9 @@ export function ManualVideoCheckpoint({
                     disabled={uploading}
                     className="hidden"
                   />
-                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
-                    <FileVideo className="h-3.5 w-3.5 text-orange-400" />
-                    <span>{uploading ? "Uploading..." : "Replace Video"}</span>
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-slate-300 font-medium">
+                    <FileVideo className="h-4 w-4 text-orange-400" />
+                    <span>{uploading ? "Uploading new file..." : "Replace MP4 Video"}</span>
                   </div>
                 </label>
 
@@ -308,17 +238,17 @@ export function ManualVideoCheckpoint({
                   variant="danger"
                   isLoading={deleting}
                   onClick={handleDeleteVideo}
-                  className="text-[11px] px-3 gap-1.5"
+                  className="text-xs px-4 gap-1.5"
                   title="Delete uploaded video from storage"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-4 w-4" />
                   <span>Delete</span>
                 </Button>
               </div>
             </div>
           ) : (
-            /* No file yet — show upload area */
-            <label className="border border-dashed border-slate-700 hover:border-slate-500 rounded-lg p-3 text-center cursor-pointer block transition-colors bg-slate-900/50">
+            /* No file yet — show prominent upload area */
+            <label className="border-2 border-dashed border-amber-500/40 hover:border-amber-500 rounded-xl p-6 text-center cursor-pointer block transition-colors bg-amber-500/5 hover:bg-amber-500/10">
               <input
                 type="file"
                 accept="video/mp4,video/*"
@@ -326,9 +256,14 @@ export function ManualVideoCheckpoint({
                 disabled={uploading}
                 className="hidden"
               />
-              <div className="flex items-center justify-center gap-2 text-xs text-slate-300">
-                <FileVideo className="h-4 w-4 text-orange-400" />
-                <span>{uploading ? "Uploading MP4..." : "Choose MP4 Video File"}</span>
+              <div className="flex flex-col items-center justify-center gap-2">
+                <FileVideo className="h-8 w-8 text-orange-400" />
+                <span className="text-sm font-bold text-slate-200">
+                  {uploading ? "Uploading MP4 to Vercel Storage..." : "Click to Choose Fresh MP4 Video File"}
+                </span>
+                <p className="text-xs text-slate-400">
+                  Supports 9:16 vertical MP4 video format. Automatically enables 10 AM auto-pilot publish.
+                </p>
               </div>
             </label>
           )}

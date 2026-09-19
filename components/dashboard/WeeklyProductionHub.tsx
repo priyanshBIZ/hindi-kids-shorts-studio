@@ -48,8 +48,6 @@ export function WeeklyProductionHub({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [batchMode, setBatchMode] = useState<"SAT" | "FRI_NIGHT" | "NEXT_WEEK">("SAT");
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [ytUrlInputs, setYtUrlInputs] = useState<{ [id: string]: string }>({});
-  const [savingYtId, setSavingYtId] = useState<string | null>(null);
 
   // 7 Pre-filled Trending Story Suggestions
   const weeklySuggestions = [
@@ -164,38 +162,6 @@ export function WeeklyProductionHub({
       });
     } finally {
       setGeneratingForDay(null);
-    }
-  };
-
-  // Save YouTube Short URL for a specific story card
-  const handleSaveYoutubeUrlForStory = async (storyId: string) => {
-    const url = ytUrlInputs[storyId]?.trim();
-    if (!url) {
-      setStatusMsg({ type: "error", text: "Please enter a valid YouTube Short URL." });
-      return;
-    }
-    setSavingYtId(storyId);
-    setStatusMsg(null);
-    try {
-      const res = await fetch(`/api/stories/${storyId}/video`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ youtubeUrl: url }),
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Failed to save YouTube URL");
-      setStatusMsg({
-        type: "success",
-        text: "✅ YouTube Short URL attached! Scheduled for 10:00 AM publishing.",
-      });
-      onRefresh();
-    } catch (err: unknown) {
-      setStatusMsg({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to save YouTube URL",
-      });
-    } finally {
-      setSavingYtId(null);
     }
   };
 
@@ -541,8 +507,7 @@ export function WeeklyProductionHub({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3.5">
         {slots.map((slot, index) => {
           const story = slot.story;
-          const hasVideo = Boolean(story?.videos && story.videos.length > 0 && (story.videos[0]?.fileUrl || story.videos[0]?.youtubeUrl));
-          const existingYtUrl = story?.videos?.[0]?.youtubeUrl;
+          const hasVideo = Boolean(story?.videos && story.videos.length > 0 && story.videos[0]?.fileUrl);
           const isPublished = story?.status === "PUBLISHED";
 
           return (
@@ -556,7 +521,7 @@ export function WeeklyProductionHub({
             >
               {/* Slot Header */}
               <div>
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-2 shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-2.5 shadow-sm">
                   <div>
                     <span className="font-bold text-xs text-amber-400 uppercase tracking-wide">{slot.dayName}</span>
                     <span className="text-[10px] text-slate-400 ml-1">({slot.formattedDate})</span>
@@ -587,10 +552,9 @@ export function WeeklyProductionHub({
                       </Badge>
                     )}
 
-                    {existingYtUrl && (
-                      <p className="text-[10px] text-red-400 font-medium truncate flex items-center gap-1">
-                        <Youtube className="h-3 w-3 shrink-0" />
-                        <span className="truncate">URL Linked</span>
+                    {!hasVideo && story.concept && (
+                      <p className="text-[10px] text-slate-400 line-clamp-2 italic border-t border-slate-800/50 pt-1 mt-1">
+                        "{story.concept}"
                       </p>
                     )}
                   </div>
@@ -628,42 +592,19 @@ export function WeeklyProductionHub({
                     )}
 
                     {!isPublished && (
-                      <div className="space-y-1.5 pt-1 border-t border-slate-800/40">
-                        {/* Option 1: YouTube URL Paste */}
-                        <div className="flex gap-1">
-                          <input
-                            type="url"
-                            placeholder="Paste YT Short URL..."
-                            value={ytUrlInputs[story.id] || ""}
-                            onChange={(e) => setYtUrlInputs({ ...ytUrlInputs, [story.id]: e.target.value })}
-                            className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-[10px] text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            disabled={savingYtId === story.id}
-                            onClick={() => handleSaveYoutubeUrlForStory(story.id)}
-                            className="px-1.5 py-1 text-[10px] bg-red-600/30 hover:bg-red-600/50 text-red-200 border border-red-500/40 rounded font-semibold shrink-0 transition-colors"
-                            title="Save YouTube URL"
-                          >
-                            {savingYtId === story.id ? "..." : "Save"}
-                          </button>
+                      <label className="block border border-dashed border-slate-700 hover:border-amber-500/60 rounded-lg p-2 text-center cursor-pointer transition-colors bg-slate-900/60">
+                        <input
+                          type="file"
+                          accept="video/mp4,video/*"
+                          disabled={uploadingForId === story.id}
+                          onChange={(e) => handleDirectUpload(e, story.id)}
+                          className="hidden"
+                        />
+                        <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-200 font-medium">
+                          <FileVideo className="h-3.5 w-3.5 text-orange-400 shrink-0" />
+                          <span>{uploadingForId === story.id ? "Uploading MP4..." : hasVideo ? "Replace MP4" : "Upload MP4 Video"}</span>
                         </div>
-
-                        {/* Option 2: Upload MP4 */}
-                        <label className="block border border-dashed border-slate-700 hover:border-amber-500/60 rounded p-1 text-center cursor-pointer transition-colors bg-slate-900/60">
-                          <input
-                            type="file"
-                            accept="video/mp4,video/*"
-                            disabled={uploadingForId === story.id}
-                            onChange={(e) => handleDirectUpload(e, story.id)}
-                            className="hidden"
-                          />
-                          <div className="flex items-center justify-center gap-1 text-[10px] text-slate-300 font-medium">
-                            <FileVideo className="h-3 w-3 text-orange-400 shrink-0" />
-                            <span>{uploadingForId === story.id ? "Uploading..." : hasVideo ? "Replace MP4" : "Upload MP4"}</span>
-                          </div>
-                        </label>
-                      </div>
+                      </label>
                     )}
                   </>
                 ) : (
