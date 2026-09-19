@@ -235,7 +235,7 @@ export class YouTubeOAuthProvider {
         },
         status: {
           privacyStatus: params.privacyStatus || "public",
-          selfDeclaredMadeForKids: true,
+          selfDeclaredMadeForKids: false, // Set to False so YouTube Shorts shelf, comments & full algorithm distribution work
         },
       },
       media: {
