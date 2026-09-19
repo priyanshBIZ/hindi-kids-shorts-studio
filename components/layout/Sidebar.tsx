@@ -9,7 +9,6 @@ import {
   CalendarDays, 
   Settings, 
   BarChart3, 
-  Sparkles,
   Clapperboard
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -36,7 +35,7 @@ export function Sidebar() {
           </div>
           <div>
             <h1 className="font-bold text-slate-100 leading-tight text-sm flex items-center gap-1.5">
-              Hindi Kids Shorts <span className="text-[10px] bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">V1</span>
+              Hindi Kids Shorts
             </h1>
             <p className="text-xs text-slate-400">Studio & Dashboard</p>
           </div>
@@ -82,10 +81,10 @@ export function Sidebar() {
       <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-xs text-slate-400 space-y-1">
         <div className="flex items-center gap-1.5 text-slate-200 font-medium">
           <Clapperboard className="h-3.5 w-3.5 text-orange-400" />
-          <span>V1 Google Flow</span>
+          <span>Google Flow & Shorts Studio</span>
         </div>
         <p className="text-[11px] leading-relaxed">
-          Manual prompt checkpoint active. No UseAPI credentials required.
+          Daily 10:00 AM auto-publishing & automatic Vercel Blob cleanup active.
         </p>
       </div>
     </aside>

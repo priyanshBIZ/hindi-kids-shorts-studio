@@ -2,21 +2,30 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Settings, ShieldCheck, RefreshCw, Cpu, Layers, Youtube, Instagram, Facebook } from "lucide-react";
+import { Settings, ShieldCheck, RefreshCw, Cpu, Layers, Youtube, Instagram, Facebook, Trash2, CheckCircle2, AlertCircle, HardDrive } from "lucide-react";
 import { ApiStatusCard } from "@/components/settings/ApiStatusCard";
 import { Button } from "@/components/ui/Button";
 
 export default function SettingsPage() {
   const [statusData, setStatusData] = useState<any | null>(null);
+  const [storageStats, setStorageStats] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cleaningStorage, setCleaningStorage] = useState(false);
+  const [cleanupMsg, setCleanupMsg] = useState<string | null>(null);
 
   const fetchStatus = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/health");
-      const data = await res.json();
-      if (data.success && data.data) {
-        setStatusData(data.data);
+      const [healthRes, storageRes] = await Promise.all([
+        fetch("/api/health").then((r) => r.json()).catch(() => ({})),
+        fetch("/api/storage/cleanup").then((r) => r.json()).catch(() => ({})),
+      ]);
+
+      if (healthRes.success && healthRes.data) {
+        setStatusData(healthRes.data);
+      }
+      if (storageRes.success && storageRes.data) {
+        setStorageStats(storageRes.data);
       }
     } catch (err) {
       console.error(err);
@@ -29,12 +38,38 @@ export default function SettingsPage() {
     fetchStatus();
   }, []);
 
+  const handleCleanupStorage = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete published video files from Vercel Blob storage?"
+    );
+    if (!confirmed) return;
+
+    setCleaningStorage(true);
+    setCleanupMsg(null);
+    try {
+      const res = await fetch("/api/storage/cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Cleanup failed");
+
+      setCleanupMsg(data.message || "Vercel Blob storage cleaned up successfully!");
+      await fetchStatus();
+    } catch (err: unknown) {
+      setCleanupMsg(err instanceof Error ? err.message : "Storage cleanup failed");
+    } finally {
+      setCleaningStorage(false);
+    }
+  };
+
   const subSettings = [
     { title: "Gemini AI & TTS", href: "/settings/ai", icon: Cpu, desc: "Configure model & temperature" },
-    { title: "Google Flow / Video", href: "/settings/flow", icon: Layers, desc: "Manual vs UseAPI provider" },
-    { title: "YouTube Shorts", href: "/settings/youtube", icon: Youtube, desc: "Phase 2 OAuth configuration" },
-    { title: "Instagram Reels", href: "/settings/instagram", icon: Instagram, desc: "Phase 3 Meta configuration" },
-    { title: "Facebook Reels", href: "/settings/facebook", icon: Facebook, desc: "Phase 3 Pages configuration" },
+    { title: "Google Flow / Video", href: "/settings/flow", icon: Layers, desc: "Flow prompt package & setup" },
+    { title: "YouTube Shorts", href: "/settings/youtube", icon: Youtube, desc: "OAuth 2.0 channel integration" },
+    { title: "Instagram Reels", href: "/settings/instagram", icon: Instagram, desc: "Meta Graph API setup" },
+    { title: "Facebook Reels", href: "/settings/facebook", icon: Facebook, desc: "Pages API configuration" },
   ];
 
   return (
@@ -62,9 +97,63 @@ export default function SettingsPage() {
         <div className="space-y-1">
           <h4 className="font-semibold text-slate-100">Zero Secret Leakage Security Policy</h4>
           <p className="text-slate-400 text-[11px] leading-relaxed">
-            All API keys (including <code>GEMINI_API_KEY</code>, OAuth secrets, and future <code>USEAPI_TOKEN</code>) are strictly loaded in server-side API routes and will never be returned to the client JavaScript or logged in plain text.
+            All API keys (including <code>GEMINI_API_KEY</code> and OAuth secrets) are strictly loaded in server-side API routes and will never be returned to the client JavaScript or logged in plain text.
           </p>
         </div>
+      </div>
+
+      {/* Vercel Blob Storage Management Card */}
+      <div className="bg-slate-900/60 p-5 rounded-xl border border-slate-800 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-sky-500/20 text-sky-400">
+              <HardDrive className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-100 text-sm">
+                Vercel Blob Storage Management
+              </h3>
+              <p className="text-xs text-slate-400">
+                Uploaded video files are automatically deleted after publishing to YouTube. You can also manually trigger a storage purge.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            size="sm"
+            variant="danger"
+            isLoading={cleaningStorage}
+            onClick={handleCleanupStorage}
+            className="text-xs gap-1.5"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Clear Published Storage</span>
+          </Button>
+        </div>
+
+        {storageStats && (
+          <div className="grid grid-cols-3 gap-3 pt-2 text-xs">
+            <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+              <p className="text-slate-400 text-[11px]">Total Files Stored</p>
+              <p className="text-base font-bold text-slate-100 mt-0.5">{storageStats.totalFilesStored}</p>
+            </div>
+            <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+              <p className="text-slate-400 text-[11px]">Published (Can Delete)</p>
+              <p className="text-base font-bold text-emerald-400 mt-0.5">{storageStats.publishedFilesStored}</p>
+            </div>
+            <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+              <p className="text-slate-400 text-[11px]">Pending Publish</p>
+              <p className="text-base font-bold text-amber-400 mt-0.5">{storageStats.pendingFilesStored}</p>
+            </div>
+          </div>
+        )}
+
+        {cleanupMsg && (
+          <p className="text-xs text-emerald-400 flex items-center gap-1.5 pt-1">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>{cleanupMsg}</span>
+          </p>
+        )}
       </div>
 
       {/* Service Status Cards Grid */}

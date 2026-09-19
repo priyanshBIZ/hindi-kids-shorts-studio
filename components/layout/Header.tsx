@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sparkles, Activity, ShieldCheck } from "lucide-react";
+import { Sparkles, Activity, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 export function Header() {
@@ -24,8 +24,8 @@ export function Header() {
           Studio Dashboard
         </h2>
         <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="text-slate-300">Phase 1 Active</span>
+          <Clock className="h-3 w-3 text-amber-400" />
+          <span className="text-slate-300">Daily 10:00 AM Auto-Publish</span>
         </div>
       </div>
 

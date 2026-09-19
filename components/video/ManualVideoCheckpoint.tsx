@@ -159,10 +159,10 @@ export function ManualVideoCheckpoint({
           </div>
           <div>
             <span className="text-xs uppercase tracking-wider text-amber-400 font-semibold">
-              V1 Manual Video Checkpoint
+              Google Flow Video Checkpoint
             </span>
             <CardTitle className="text-lg text-slate-100">
-              Google Flow & Video Recording
+              Video & Storage Management
             </CardTitle>
           </div>
         </div>

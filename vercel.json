@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron/publish",
+      "schedule": "30 4 * * *"
+    }
+  ],
   "functions": {
     "app/api/stories/route.ts": {
       "maxDuration": 60
@@ -10,6 +16,12 @@
       "maxDuration": 60
     },
     "app/api/stories/[id]/publish/instagram/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/publish/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/storage/cleanup/route.ts": {
       "maxDuration": 60
     }
   }

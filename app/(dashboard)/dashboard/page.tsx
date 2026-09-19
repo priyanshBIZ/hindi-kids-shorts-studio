@@ -3,27 +3,23 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Sparkles, ArrowRight, BookOpen, AlertCircle } from "lucide-react";
-import { TodayStoryCard } from "@/components/dashboard/TodayStoryCard";
 import { QuickStats } from "@/components/dashboard/QuickStats";
+import { WeeklyProductionHub } from "@/components/dashboard/WeeklyProductionHub";
 import { StoryCard } from "@/components/content/StoryCard";
 import { Button } from "@/components/ui/Button";
 
 export default function DashboardPage() {
   const [stories, setStories] = useState<any[]>([]);
-  const [todayStory, setTodayStory] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStories = async () => {
     try {
-      const res = await fetch("/api/stories?limit=10");
+      const res = await fetch("/api/stories?limit=30");
       const data = await res.json();
       if (data.success && data.data) {
         setStories(data.data);
-        if (data.data.length > 0) {
-          setTodayStory(data.data[0]);
-        }
       }
     } catch (err: unknown) {
       console.error("Failed to load stories:", err);
@@ -71,7 +67,7 @@ export default function DashboardPage() {
             <span className="text-xl">✨</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Automate story synthesis, copy Google Flow prompts, and prepare viral Shorts for YouTube, Instagram & Facebook.
+            Saturday Batch Production Hub: Generate 7 Shorts every Saturday. Auto-publishes daily at 10:00 AM & auto-cleans Vercel storage.
           </p>
         </div>
 
@@ -98,12 +94,8 @@ export default function DashboardPage() {
         published={published}
       />
 
-      {/* Today's Featured Content / Generation Card */}
-      <TodayStoryCard
-        story={todayStory}
-        onGenerateNew={handleGenerateTodayStory}
-        isGenerating={generating}
-      />
+      {/* Saturday 7-Day Production Hub & Auto-Publish Schedule */}
+      <WeeklyProductionHub stories={stories} onRefresh={fetchStories} />
 
       {/* Recent Stories Stream */}
       <div className="space-y-4">
