@@ -48,6 +48,8 @@ export function WeeklyProductionHub({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [batchMode, setBatchMode] = useState<"SAT" | "FRI_NIGHT" | "NEXT_WEEK">("SAT");
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [ytUrlInputs, setYtUrlInputs] = useState<{ [id: string]: string }>({});
+  const [savingYtId, setSavingYtId] = useState<string | null>(null);
 
   // 7 Pre-filled Trending Story Suggestions
   const weeklySuggestions = [
@@ -165,6 +167,38 @@ export function WeeklyProductionHub({
     }
   };
 
+  // Save YouTube Short URL for a specific story card
+  const handleSaveYoutubeUrlForStory = async (storyId: string) => {
+    const url = ytUrlInputs[storyId]?.trim();
+    if (!url) {
+      setStatusMsg({ type: "error", text: "Please enter a valid YouTube Short URL." });
+      return;
+    }
+    setSavingYtId(storyId);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(`/api/stories/${storyId}/video`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ youtubeUrl: url }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to save YouTube URL");
+      setStatusMsg({
+        type: "success",
+        text: "✅ YouTube Short URL attached! Scheduled for 10:00 AM publishing.",
+      });
+      onRefresh();
+    } catch (err: unknown) {
+      setStatusMsg({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to save YouTube URL",
+      });
+    } finally {
+      setSavingYtId(null);
+    }
+  };
+
   // Immediate Publish Now Button for Today's video
   const handlePublishNow = async (storyId: string) => {
     setPublishingId(storyId);
@@ -277,28 +311,52 @@ export function WeeklyProductionHub({
     const satDate = getBatchStartDate();
     const today = new Date();
 
+    const assignedStoryIds = new Set<string>();
     const slots = [];
+
     for (let i = 0; i < 7; i++) {
       const slotDate = new Date(satDate);
       slotDate.setDate(satDate.getDate() + i);
 
-      // Match story by scheduledFor date OR createdAt date OR unassigned available story
-      const matchedStory = stories.find((s) => {
-        if (s.scheduledFor) {
-          const d = new Date(s.scheduledFor);
-          return (
-            d.getDate() === slotDate.getDate() &&
-            d.getMonth() === slotDate.getMonth() &&
-            d.getFullYear() === slotDate.getFullYear()
-          );
-        }
-        const c = new Date(s.createdAt);
+      // 1. Try to find a story whose scheduledFor date matches slotDate exactly
+      let matchedStory = stories.find((s) => {
+        if (assignedStoryIds.has(s.id)) return false;
+        if (!s.scheduledFor) return false;
+        const d = new Date(s.scheduledFor);
         return (
-          c.getDate() === slotDate.getDate() &&
-          c.getMonth() === slotDate.getMonth() &&
-          c.getFullYear() === slotDate.getFullYear()
+          d.getDate() === slotDate.getDate() &&
+          d.getMonth() === slotDate.getMonth() &&
+          d.getFullYear() === slotDate.getFullYear()
         );
-      }) || (i === 0 && stories.length > 0 ? stories[0] : null);
+      });
+
+      // 2. If no scheduledFor match, try matching by createdAt date (if distinct)
+      if (!matchedStory) {
+        matchedStory = stories.find((s) => {
+          if (assignedStoryIds.has(s.id)) return false;
+          if (s.scheduledFor) return false;
+          const c = new Date(s.createdAt);
+          return (
+            c.getDate() === slotDate.getDate() &&
+            c.getMonth() === slotDate.getMonth() &&
+            c.getFullYear() === slotDate.getFullYear()
+          );
+        });
+      }
+
+      // 3. Fallback: assign next available unassigned story to fill slots 0 to 6
+      if (!matchedStory) {
+        const unassigned = stories.filter((s) => !assignedStoryIds.has(s.id));
+        if (unassigned.length > 0) {
+          matchedStory = unassigned[0];
+        }
+      }
+
+      if (matchedStory) {
+        assignedStoryIds.add(matchedStory.id);
+      }
+
+      const suggestion = weeklySuggestions[i] || weeklySuggestions[0];
 
       slots.push({
         date: slotDate,
@@ -306,6 +364,7 @@ export function WeeklyProductionHub({
         fullDayName: slotDate.toLocaleDateString("en-US", { weekday: "long" }),
         formattedDate: slotDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
         story: matchedStory || null,
+        suggestion,
         isToday:
           today.getDate() === slotDate.getDate() &&
           today.getMonth() === slotDate.getMonth() &&
@@ -419,7 +478,7 @@ export function WeeklyProductionHub({
                   ? "✅ Story is published to YouTube Shorts!"
                   : todayStory.videos?.[0]?.fileUrl || todayStory.videos?.[0]?.youtubeUrl
                   ? "Video attached and ready! Click Publish Now to upload immediately to YouTube Shorts."
-                  : "Prompts ready! Upload 9:16 MP4 video below to enable daily auto-publishing."}
+                  : "Prompts ready! Upload 9:16 MP4 video or paste YouTube Short URL below."}
               </p>
             </div>
           </div>
@@ -483,12 +542,13 @@ export function WeeklyProductionHub({
         {slots.map((slot, index) => {
           const story = slot.story;
           const hasVideo = Boolean(story?.videos && story.videos.length > 0 && (story.videos[0]?.fileUrl || story.videos[0]?.youtubeUrl));
+          const existingYtUrl = story?.videos?.[0]?.youtubeUrl;
           const isPublished = story?.status === "PUBLISHED";
 
           return (
             <div
               key={index}
-              className={`p-4 rounded-xl border flex flex-col justify-between space-y-4 transition-all ${
+              className={`p-4 rounded-xl border flex flex-col justify-between space-y-3.5 transition-all ${
                 slot.isToday
                   ? "bg-slate-900/90 border-amber-500 shadow-xl shadow-amber-500/10 ring-1 ring-amber-500/40"
                   : "bg-slate-950/80 border-slate-800 hover:border-slate-700"
@@ -496,7 +556,7 @@ export function WeeklyProductionHub({
             >
               {/* Slot Header */}
               <div>
-                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-2.5">
+                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-2 shadow-sm">
                   <div>
                     <span className="font-bold text-xs text-amber-400 uppercase tracking-wide">{slot.dayName}</span>
                     <span className="text-[10px] text-slate-400 ml-1">({slot.formattedDate})</span>
@@ -526,11 +586,18 @@ export function WeeklyProductionHub({
                         <span>Prompts Ready</span>
                       </Badge>
                     )}
+
+                    {existingYtUrl && (
+                      <p className="text-[10px] text-red-400 font-medium truncate flex items-center gap-1">
+                        <Youtube className="h-3 w-3 shrink-0" />
+                        <span className="truncate">URL Linked</span>
+                      </p>
+                    )}
                   </div>
                 ) : (
-                  <div className="py-4 text-center space-y-1">
-                    <p className="text-xs text-slate-500 font-medium">No story yet</p>
-                    <p className="text-[10px] text-slate-600">Click below to generate</p>
+                  <div className="py-2.5 text-center space-y-1">
+                    <span className="text-[10px] font-bold text-amber-400/90 uppercase block">{slot.suggestion.title}</span>
+                    <p className="text-[11px] text-slate-400 line-clamp-2 leading-snug">{slot.suggestion.theme}</p>
                   </div>
                 )}
               </div>
@@ -561,19 +628,42 @@ export function WeeklyProductionHub({
                     )}
 
                     {!isPublished && (
-                      <label className="block border border-dashed border-slate-700 hover:border-amber-500/60 rounded-lg p-2 text-center cursor-pointer transition-colors bg-slate-900/60">
-                        <input
-                          type="file"
-                          accept="video/mp4,video/*"
-                          disabled={uploadingForId === story.id}
-                          onChange={(e) => handleDirectUpload(e, story.id)}
-                          className="hidden"
-                        />
-                        <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-200 font-medium">
-                          <FileVideo className="h-3.5 w-3.5 text-orange-400 shrink-0" />
-                          <span>{uploadingForId === story.id ? "Uploading..." : hasVideo ? "Replace MP4" : "Upload MP4"}</span>
+                      <div className="space-y-1.5 pt-1 border-t border-slate-800/40">
+                        {/* Option 1: YouTube URL Paste */}
+                        <div className="flex gap-1">
+                          <input
+                            type="url"
+                            placeholder="Paste YT Short URL..."
+                            value={ytUrlInputs[story.id] || ""}
+                            onChange={(e) => setYtUrlInputs({ ...ytUrlInputs, [story.id]: e.target.value })}
+                            className="w-full bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-[10px] text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            disabled={savingYtId === story.id}
+                            onClick={() => handleSaveYoutubeUrlForStory(story.id)}
+                            className="px-1.5 py-1 text-[10px] bg-red-600/30 hover:bg-red-600/50 text-red-200 border border-red-500/40 rounded font-semibold shrink-0 transition-colors"
+                            title="Save YouTube URL"
+                          >
+                            {savingYtId === story.id ? "..." : "Save"}
+                          </button>
                         </div>
-                      </label>
+
+                        {/* Option 2: Upload MP4 */}
+                        <label className="block border border-dashed border-slate-700 hover:border-amber-500/60 rounded p-1 text-center cursor-pointer transition-colors bg-slate-900/60">
+                          <input
+                            type="file"
+                            accept="video/mp4,video/*"
+                            disabled={uploadingForId === story.id}
+                            onChange={(e) => handleDirectUpload(e, story.id)}
+                            className="hidden"
+                          />
+                          <div className="flex items-center justify-center gap-1 text-[10px] text-slate-300 font-medium">
+                            <FileVideo className="h-3 w-3 text-orange-400 shrink-0" />
+                            <span>{uploadingForId === story.id ? "Uploading..." : hasVideo ? "Replace MP4" : "Upload MP4"}</span>
+                          </div>
+                        </label>
+                      </div>
                     )}
                   </>
                 ) : (

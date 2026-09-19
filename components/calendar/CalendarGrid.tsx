@@ -10,6 +10,7 @@ interface CalendarStory {
   id: string;
   title: string;
   status: string;
+  scheduledFor?: string | null;
   createdAt: string;
 }
 
@@ -35,12 +36,12 @@ export function CalendarGrid({ stories }: { stories: CalendarStory[] }) {
     setCurrentDate(new Date(year, month + 1, 1));
   };
 
-  // Group stories by day of the current month
+  // Group stories by day of the current month based on scheduledFor (or createdAt)
   const storiesByDay: { [day: number]: CalendarStory[] } = {};
   stories.forEach((story) => {
-    const d = new Date(story.createdAt);
-    if (d.getFullYear() === year && d.getMonth() === month) {
-      const day = d.getDate();
+    const targetDate = story.scheduledFor ? new Date(story.scheduledFor) : new Date(story.createdAt);
+    if (targetDate.getFullYear() === year && targetDate.getMonth() === month) {
+      const day = targetDate.getDate();
       if (!storiesByDay[day]) storiesByDay[day] = [];
       storiesByDay[day].push(story);
     }
