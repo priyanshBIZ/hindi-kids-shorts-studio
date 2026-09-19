@@ -48,9 +48,11 @@ export function WeeklyProductionHub({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [batchMode, setBatchMode] = useState<"SAT" | "FRI_NIGHT" | "NEXT_WEEK">("SAT");
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [deletingStoryId, setDeletingStoryId] = useState<string | null>(null);
+  const [regeneratingForDay, setRegeneratingForDay] = useState<number | null>(null);
 
-  // 7 Pre-filled Trending Story Suggestions
-  const weeklySuggestions = [
+  // Multi-Week Unique Curriculum Suggestions (Different characters & stories for This Week vs Next Week)
+  const weeklySuggestionsWeek1 = [
     { day: "Sat", title: "गज्जू और नन्ही चिड़िया", theme: "Baby elephant Gajju helps a baby sparrow return to nest." },
     { day: "Sun", title: "चीकू और जादुई अखरोट", theme: "Clever squirrel Chiku finds a huge walnut & shares with friends." },
     { day: "Mon", title: "मीनू चिड़िया का घोंसला", theme: "Little bird Meenu builds a sturdy nest with Golu bear." },
@@ -59,6 +61,20 @@ export function WeeklyProductionHub({
     { day: "Thu", title: "रैम्बो मोर का नाच", theme: "Rambo peacock shares his umbrella-like feathers in rain." },
     { day: "Fri", title: "मिठू तोता और मीठा आम", theme: "Mithu parrot discovers a sweet mango tree & invites all birds." },
   ];
+
+  const weeklySuggestionsWeek2 = [
+    { day: "Sat", title: "शेरू और जादुई शब्द", theme: "Little lion cub Sheru discovers the power of polite words 'Please' & 'Thank you'." },
+    { day: "Sun", title: "मुन्नू बंदर और केला पार्टी", theme: "Playful monkey Munnu learns the beauty of waiting for your turn." },
+    { day: "Mon", title: "भोलू भालू और नदी का पुल", theme: "Big friendly bear Bholu helps little forest creatures cross stream safely." },
+    { day: "Tue", title: "टीना हिरण का साहस", theme: "Gentle spotted deer Tina finds the courage to rescue lost bunny toy." },
+    { day: "Wed", title: "जुगनू की चमकीली रात", theme: "Tiny firefly Jugnu lights up the dark forest path for lost friends." },
+    { day: "Thu", title: "कालू कौआ और मटका", theme: "Clever crow Kalu shares cold water with tired woodland birds." },
+    { day: "Fri", title: "तारा और रात का गीत", theme: "A cheerful little star descends to sing sweet bedtime lullabies." },
+  ];
+
+  const getActiveWeeklySuggestions = () => {
+    return batchMode === "NEXT_WEEK" ? weeklySuggestionsWeek2 : weeklySuggestionsWeek1;
+  };
 
   // Helper to calculate start date based on chosen Batch Mode
   const getBatchStartDate = () => {
@@ -120,7 +136,8 @@ export function WeeklyProductionHub({
     setGeneratingForDay(dayIndex);
     setStatusMsg(null);
     try {
-      const preset = weeklySuggestions[dayIndex] || weeklySuggestions[0];
+      const suggestions = getActiveWeeklySuggestions();
+      const preset = suggestions[dayIndex] || suggestions[0];
       const scheduledDate = new Date(slotDate);
       scheduledDate.setHours(10, 0, 0, 0);
 
@@ -144,7 +161,7 @@ export function WeeklyProductionHub({
       // Attach scheduled date to the generated story
       if (data.data?.id) {
         await fetch(`/api/stories/${data.data.id}`, {
-          method: "PUT",
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ scheduledFor: scheduledDate.toISOString() }),
         });
@@ -162,6 +179,77 @@ export function WeeklyProductionHub({
       });
     } finally {
       setGeneratingForDay(null);
+    }
+  };
+
+  // Delete/Remove story from a day slot
+  const handleRemoveStory = async (storyId: string) => {
+    if (!window.confirm("Are you sure you want to remove this story? The slot will become available to generate a new story.")) return;
+    setDeletingStoryId(storyId);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(`/api/stories/${storyId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to remove story");
+
+      setStatusMsg({ type: "success", text: "🗑️ Story removed from schedule!" });
+      onRefresh();
+    } catch (err: unknown) {
+      setStatusMsg({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to remove story",
+      });
+    } finally {
+      setDeletingStoryId(null);
+    }
+  };
+
+  // Regenerate a fresh story for a day slot
+  const handleRegenerateStory = async (slotDate: Date, dayIndex: number, oldStoryId?: string) => {
+    setRegeneratingForDay(dayIndex);
+    setStatusMsg(null);
+    try {
+      if (oldStoryId) {
+        await fetch(`/api/stories/${oldStoryId}`, { method: "DELETE" }).catch(() => {});
+      }
+
+      const suggestions = getActiveWeeklySuggestions();
+      const preset = suggestions[dayIndex] || suggestions[0];
+      const scheduledDate = new Date(slotDate);
+      scheduledDate.setHours(10, 0, 0, 0);
+
+      const res = await fetch("/api/stories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          theme: preset.theme,
+          characterName: preset.title,
+        }),
+      });
+
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Regeneration failed");
+
+      if (data.data?.id) {
+        await fetch(`/api/stories/${data.data.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scheduledFor: scheduledDate.toISOString() }),
+        });
+      }
+
+      setStatusMsg({
+        type: "success",
+        text: `✨ Fresh story generated for ${slotDate.toLocaleDateString("en-US", { weekday: "long" })}!`,
+      });
+      onRefresh();
+    } catch (err: unknown) {
+      setStatusMsg({
+        type: "error",
+        text: err instanceof Error ? err.message : "Regeneration failed",
+      });
+    } finally {
+      setRegeneratingForDay(null);
     }
   };
 
@@ -330,7 +418,7 @@ export function WeeklyProductionHub({
         assignedStoryTitles.add(matchedStory.title);
       }
 
-      const suggestion = weeklySuggestions[i] || weeklySuggestions[0];
+      const suggestion = getActiveWeeklySuggestions()[i] || getActiveWeeklySuggestions()[0];
 
       slots.push({
         date: slotDate,
@@ -483,7 +571,7 @@ export function WeeklyProductionHub({
             <span className="text-[11px] text-slate-500">Auto-filled during 7-day batch generation</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
-            {weeklySuggestions.map((idea) => (
+            {getActiveWeeklySuggestions().map((idea) => (
               <div key={idea.day} className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-1 hover:border-amber-500/40 transition-colors">
                 <span className="font-bold text-[11px] text-amber-400 uppercase block">{idea.day}: {idea.title}</span>
                 <p className="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">{idea.theme}</p>
@@ -614,6 +702,26 @@ export function WeeklyProductionHub({
                         </div>
                       </label>
                     )}
+
+                    {/* Remove + Regenerate controls (always visible when story exists) */}
+                    <div className="flex gap-1.5 pt-1">
+                      <button
+                        onClick={() => handleRegenerateStory(slot.date, index, story.id)}
+                        disabled={regeneratingForDay === index}
+                        className="flex-1 text-[10px] text-amber-400 hover:text-amber-300 border border-amber-500/20 hover:border-amber-500/40 rounded px-2 py-1 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                      >
+                        <RefreshCcw className="h-3 w-3 shrink-0" />
+                        <span>{regeneratingForDay === index ? "Generating…" : "Regenerate"}</span>
+                      </button>
+                      <button
+                        onClick={() => handleRemoveStory(story.id)}
+                        disabled={deletingStoryId === story.id}
+                        className="flex-1 text-[10px] text-rose-400 hover:text-rose-300 border border-rose-500/20 hover:border-rose-500/40 rounded px-2 py-1 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                      >
+                        <Trash2 className="h-3 w-3 shrink-0" />
+                        <span>{deletingStoryId === story.id ? "Removing…" : "Remove"}</span>
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <Button

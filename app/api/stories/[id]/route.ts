@@ -48,6 +48,7 @@ export async function PATCH(
         moral: body.moral,
         storyText: body.storyText,
         status: body.status,
+        scheduledFor: body.scheduledFor !== undefined ? (body.scheduledFor ? new Date(body.scheduledFor) : null) : undefined,
       },
       include: {
         scenes: {
