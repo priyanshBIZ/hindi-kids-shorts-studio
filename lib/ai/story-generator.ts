@@ -35,9 +35,9 @@ REQUIREMENTS:
    - narration (warm, energetic 1-2 line Hindi voiceover in Devanagari)
 
 OUTPUT FORMAT:
-Strict JSON matching this EXACT schema key names:
+Strict JSON matching this EXACT schema key names (create a unique, specific title reflecting the requested theme):
 {
-  "title": "गज्जू और नन्ही चिड़िया (Gajju and the Little Bird)",
+  "title": "[Insert Unique Story Title in Hindi & English reflecting the theme]",
   "concept": "एक छोटा हाथी एक गिरी हुई नन्ही चिड़िया की मदद करता है।",
   "moral": "दूसरों की मदद करने से सच्ची खुशी मिलती है।",
   "ageGroup": "4-8",

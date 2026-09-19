@@ -12,6 +12,7 @@ export interface StorySummary {
   moral: string;
   status: string;
   durationSeconds: number;
+  scheduledFor?: string | Date | null;
   createdAt: string | Date;
   scenes?: any[];
   videos?: any[];
@@ -21,15 +22,16 @@ export interface StorySummary {
 export function StoryCard({ story }: { story: StorySummary }) {
   const hasVideo = Boolean(story.videos && story.videos.length > 0 && story.videos[0]?.status === "READY");
   const hasMetadata = Boolean(story.metadata);
+  const displayDate = story.scheduledFor || story.createdAt;
 
   return (
     <Card className="hover:border-slate-700 transition-all group flex flex-col justify-between p-5">
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
           <StatusBadge status={story.status} />
-          <span className="text-xs text-slate-500 flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            {formatDate(story.createdAt)}
+          <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
+            <Calendar className="h-3 w-3 text-amber-400 shrink-0" />
+            {story.scheduledFor ? `Scheduled: ${formatDate(story.scheduledFor)}` : formatDate(story.createdAt)}
           </span>
         </div>
 

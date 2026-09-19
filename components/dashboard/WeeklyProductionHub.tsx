@@ -278,15 +278,22 @@ export function WeeklyProductionHub({
     const today = new Date();
 
     const assignedStoryIds = new Set<string>();
+    const assignedStoryTitles = new Set<string>();
     const slots = [];
 
     for (let i = 0; i < 7; i++) {
       const slotDate = new Date(satDate);
       slotDate.setDate(satDate.getDate() + i);
 
+      // Helper to check if title is already assigned (normalized)
+      const isTitleAssigned = (title: string) => {
+        const norm = title.trim().toLowerCase();
+        return Array.from(assignedStoryTitles).some((t) => t.trim().toLowerCase() === norm);
+      };
+
       // 1. Try to find a story whose scheduledFor date matches slotDate exactly
       let matchedStory = stories.find((s) => {
-        if (assignedStoryIds.has(s.id)) return false;
+        if (assignedStoryIds.has(s.id) || isTitleAssigned(s.title)) return false;
         if (!s.scheduledFor) return false;
         const d = new Date(s.scheduledFor);
         return (
@@ -296,10 +303,10 @@ export function WeeklyProductionHub({
         );
       });
 
-      // 2. If no scheduledFor match, try matching by createdAt date (if distinct)
+      // 2. If no scheduledFor match, try matching by createdAt date (if distinct & unique title)
       if (!matchedStory) {
         matchedStory = stories.find((s) => {
-          if (assignedStoryIds.has(s.id)) return false;
+          if (assignedStoryIds.has(s.id) || isTitleAssigned(s.title)) return false;
           if (s.scheduledFor) return false;
           const c = new Date(s.createdAt);
           return (
@@ -310,9 +317,9 @@ export function WeeklyProductionHub({
         });
       }
 
-      // 3. Fallback: assign next available unassigned story to fill slots 0 to 6
+      // 3. Fallback: assign next available unassigned story with UNIQUE title to fill slots 0 to 6
       if (!matchedStory) {
-        const unassigned = stories.filter((s) => !assignedStoryIds.has(s.id));
+        const unassigned = stories.filter((s) => !assignedStoryIds.has(s.id) && !isTitleAssigned(s.title));
         if (unassigned.length > 0) {
           matchedStory = unassigned[0];
         }
@@ -320,6 +327,7 @@ export function WeeklyProductionHub({
 
       if (matchedStory) {
         assignedStoryIds.add(matchedStory.id);
+        assignedStoryTitles.add(matchedStory.title);
       }
 
       const suggestion = weeklySuggestions[i] || weeklySuggestions[0];

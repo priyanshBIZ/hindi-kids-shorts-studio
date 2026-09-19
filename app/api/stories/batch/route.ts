@@ -8,36 +8,43 @@ export const maxDuration = 60;
 // High quality fallback curriculum for 7 days (Sat - Fri)
 const CURRICULUM_PRESETS = [
   {
+    title: "गज्जू और नन्ही चिड़िया (Gajju and the Little Bird)",
     theme: "Gajju the baby elephant helping a fallen baby sparrow get back to its nest.",
     characterName: "Gajju the baby elephant",
     moral: "Helping others brings true happiness",
   },
   {
+    title: "चीकू गिलहरी और जादुई अखरोट (Chiku and the Magic Walnut)",
     theme: "Clever squirrel Chiku finding a huge walnut and sharing with forest friends.",
     characterName: "Chiku the squirrel",
     moral: "Sharing multiplies your joy",
   },
   {
+    title: "मीनू चिड़िया का मजबूत घोंसला (Meenu Sparrow's Sturdy Nest)",
     theme: "Little sparrow Meenu building a windproof nest with Golu bear.",
     characterName: "Meenu sparrow & Golu bear",
     moral: "Teamwork makes any difficult task easy",
   },
   {
+    title: "टॉमी और खोई बिल्ली (Tommy and the Lost Kitten)",
     theme: "Friendly puppy Tommy guiding a lost kitten back home in rain.",
     characterName: "Tommy the puppy",
     moral: "Kindness and courage light up dark paths",
   },
   {
+    title: "सोनू खरगोश की सच्ची जीत (Sonu Rabbit's Real Victory)",
     theme: "Playful rabbit Sonu learning that persistence wins the race.",
     characterName: "Sonu the rabbit",
     moral: "Patience and practice lead to success",
   },
   {
+    title: "रैम्बो मोर की जादुई छतरी (Rambo Peacock's Umbrella)",
     theme: "Shy peacock Rambo sharing his colorful feathers as an umbrella.",
     characterName: "Rambo the peacock",
     moral: "Your unique gifts are meant to bless others",
   },
   {
+    title: "मिठू तोता और मीठा आम (Mithu Parrot and Sweet Mango)",
     theme: "Cheerful parrot Mithu finding a giant mango tree & inviting all birds.",
     characterName: "Mithu the parrot",
     moral: "Celebrating together makes food taste sweeter",
@@ -106,7 +113,7 @@ export async function POST(req: NextRequest) {
         const created = await prisma.story.create({
           data: {
             projectId: project.id,
-            title: `दिन ${i + 1}: ${preset.characterName}`,
+            title: preset.title,
             concept: preset.theme,
             moral: preset.moral,
             ageGroup: "4-8",
