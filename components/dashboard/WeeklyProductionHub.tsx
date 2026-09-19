@@ -8,13 +8,14 @@ import {
   Clock, 
   CheckCircle2, 
   Video, 
-  UploadCloud, 
   FileVideo, 
   ArrowRight,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  Youtube,
+  Lightbulb
 } from "lucide-react";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { upload } from "@vercel/blob/client";
@@ -39,7 +40,20 @@ export function WeeklyProductionHub({
   const [generatingBatch, setGeneratingBatch] = useState(false);
   const [cleaningStorage, setCleaningStorage] = useState(false);
   const [uploadingForId, setUploadingForId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // 7 Pre-filled Trending Story Suggestions for Saturday -> Friday batch
+  const weeklySuggestions = [
+    { day: "Sat", title: "गज्जू और नन्ही चिड़िया", theme: "Baby elephant Gajju helps a baby sparrow return to nest." },
+    { day: "Sun", title: "चीकू और जादुई अखरोट", theme: "Clever squirrel Chiku finds a huge walnut & shares with friends." },
+    { day: "Mon", title: "मीनू चिड़िया का घोंसला", theme: "Little bird Meenu builds a sturdy nest with Golu bear." },
+    { day: "Tue", title: "टॉमी कुत्ता और खोया बच्चा", theme: "Friendly dog Tommy guides a lost puppy back home." },
+    { day: "Wed", title: "सोनू खरगोश की दौड़", theme: "Sonu rabbit learns that consistency is key to victory." },
+    { day: "Thu", title: "रैम्बो मोर का नाच", theme: "Rambo peacock shares his umbrella-like feathers in rain." },
+    { day: "Fri", title: "मिठू तोता और मीठा आम", theme: "Mithu parrot discovers a sweet mango tree & invites all birds." },
+  ];
 
   // Generate 7-Day Batch
   const handleGenerate7DayBatch = async () => {
@@ -66,6 +80,35 @@ export function WeeklyProductionHub({
       });
     } finally {
       setGeneratingBatch(false);
+    }
+  };
+
+  // Immediate Publish Now Button for Today's video
+  const handlePublishNow = async (storyId: string) => {
+    setPublishingId(storyId);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(`/api/stories/${storyId}/publish/youtube`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ privacyStatus: "public" }),
+      });
+
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "YouTube publish failed");
+
+      setStatusMsg({
+        type: "success",
+        text: `🚀 Story published to YouTube Shorts successfully! Vercel Blob storage auto-cleaned.`,
+      });
+      onRefresh();
+    } catch (err: unknown) {
+      setStatusMsg({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to publish to YouTube",
+      });
+    } finally {
+      setPublishingId(null);
     }
   };
 
@@ -140,7 +183,6 @@ export function WeeklyProductionHub({
   const getWeeklySlots = () => {
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 = Sun, 6 = Sat
-    const diffToSat = (6 - dayOfWeek + 7) % 7; // Days until upcoming Saturday (or today if Sat)
 
     const satDate = new Date(today);
     satDate.setDate(today.getDate() - (dayOfWeek === 6 ? 0 : dayOfWeek + 1));
@@ -151,14 +193,21 @@ export function WeeklyProductionHub({
       const slotDate = new Date(satDate);
       slotDate.setDate(satDate.getDate() + i);
 
-      // Find story matching this scheduled date (or closest)
+      // Match story by scheduledFor date OR createdAt date
       const matchedStory = stories.find((s) => {
-        if (!s.scheduledFor) return false;
-        const d = new Date(s.scheduledFor);
+        if (s.scheduledFor) {
+          const d = new Date(s.scheduledFor);
+          return (
+            d.getDate() === slotDate.getDate() &&
+            d.getMonth() === slotDate.getMonth() &&
+            d.getFullYear() === slotDate.getFullYear()
+          );
+        }
+        const c = new Date(s.createdAt);
         return (
-          d.getDate() === slotDate.getDate() &&
-          d.getMonth() === slotDate.getMonth() &&
-          d.getFullYear() === slotDate.getFullYear()
+          c.getDate() === slotDate.getDate() &&
+          c.getMonth() === slotDate.getMonth() &&
+          c.getFullYear() === slotDate.getFullYear()
         );
       });
 
@@ -178,6 +227,8 @@ export function WeeklyProductionHub({
   };
 
   const slots = getWeeklySlots();
+  const todaySlot = slots.find((s) => s.isToday);
+  const todayStory = todaySlot?.story;
 
   return (
     <Card className="border-orange-500/30 bg-slate-900/90 space-y-6 p-6">
@@ -198,6 +249,16 @@ export function WeeklyProductionHub({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowSuggestions(!showSuggestions)}
+            className="gap-1.5 text-xs text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+          >
+            <Lightbulb className="h-3.5 w-3.5" />
+            <span>{showSuggestions ? "Hide 7 Ideas" : "7-Day Pre-filled Ideas"}</span>
+          </Button>
+
           <Button
             size="sm"
             variant="primary"
@@ -222,6 +283,68 @@ export function WeeklyProductionHub({
           </Button>
         </div>
       </div>
+
+      {/* TODAY'S URGENT ACTION ALERT BANNER */}
+      {todayStory && (
+        <div className="p-4 rounded-xl border border-amber-500/50 bg-amber-500/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+              <Clock className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-xs text-amber-400 uppercase tracking-wider">
+                  TODAY'S ACTION ALERT ({todaySlot?.dayName}, {todaySlot?.formattedDate})
+                </span>
+                <Badge variant="warning" className="text-[10px] bg-amber-500/20 text-amber-300">
+                  10:00 AM Active
+                </Badge>
+              </div>
+              <h4 className="font-semibold text-slate-100 text-sm mt-0.5">
+                {todayStory.title}
+              </h4>
+              <p className="text-xs text-slate-300">
+                {todayStory.status === "PUBLISHED"
+                  ? "✅ Already published to YouTube Shorts!"
+                  : todayStory.videos?.[0]?.fileUrl || todayStory.videos?.[0]?.youtubeUrl
+                  ? "Video attached and ready! Click Publish Now to post immediately."
+                  : "Story prompts ready! Upload MP4 video to enable 10:00 AM publishing."}
+              </p>
+            </div>
+          </div>
+
+          {todayStory.status !== "PUBLISHED" && (
+            <Button
+              size="sm"
+              variant="primary"
+              isLoading={publishingId === todayStory.id}
+              onClick={() => handlePublishNow(todayStory.id)}
+              className="gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-xs shrink-0 font-semibold"
+            >
+              <Youtube className="h-4 w-4" />
+              <span>Publish Now to YouTube</span>
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* 7-DAY PRE-FILLED IDEAS DRAWER */}
+      {showSuggestions && (
+        <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+          <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Lightbulb className="h-3.5 w-3.5" />
+            <span>7-Day Pre-filled Trending Story Curriculum (Sat – Fri)</span>
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+            {weeklySuggestions.map((idea) => (
+              <div key={idea.day} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-xs space-y-1">
+                <span className="font-bold text-[11px] text-amber-400 uppercase">{idea.day}: {idea.title}</span>
+                <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed">{idea.theme}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Action Notification */}
       {statusMsg && (
@@ -253,7 +376,7 @@ export function WeeklyProductionHub({
               key={index}
               className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
                 slot.isToday
-                  ? "bg-slate-900 border-amber-500/60 shadow-lg shadow-amber-500/10"
+                  ? "bg-slate-900 border-amber-500/60 shadow-lg shadow-amber-500/10 ring-1 ring-amber-500/30"
                   : "bg-slate-950/70 border-slate-800/80"
               }`}
             >
@@ -310,6 +433,20 @@ export function WeeklyProductionHub({
                       <span>Open Studio</span>
                       <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
                     </Link>
+
+                    {/* Publish Now if video ready */}
+                    {!isPublished && hasVideo && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        isLoading={publishingId === story.id}
+                        onClick={() => handlePublishNow(story.id)}
+                        className="w-full text-[10px] py-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 gap-1 font-semibold"
+                      >
+                        <Youtube className="h-3 w-3" />
+                        <span>Publish Now</span>
+                      </Button>
+                    )}
 
                     {/* Quick MP4 Upload button */}
                     {!isPublished && (
